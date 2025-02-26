@@ -164,7 +164,7 @@ const uint8_t  kArgoPreamble2  = 0b11110101;
 const uint8_t  kArgoPost       = 0b00000010;
 
 // Constants (generic)
-const uint16_t kArgoFrequency  = 38000;  // Hz
+const uint16_t kArgoFrequency  = 33000;  // Hz
 // Temp
 const uint8_t kArgoTempDelta   = 4;
 const uint8_t kArgoMaxRoomTemp = 35;  // Celsius
