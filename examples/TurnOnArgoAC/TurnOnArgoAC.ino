@@ -1,3 +1,7 @@
+
+// Wolfi Edit 2025-02-19: Parameter use_modulation, inverted hinzugefügt.
+
+
 /* Copyright 2017, 2018 crankyoldgit
 * An IR LED circuit *MUST* be connected to the ESP8266 on a pin
 * as specified by kIrLed below.
@@ -29,7 +33,9 @@
 #include <ir_Argo.h>
 
 const uint16_t kIrLed = 4;  // ESP8266 GPIO pin to use. Recommended: 4 (D2).
-IRArgoAC ac(kIrLed);  // Set the GPIO to be used to sending the message.
+const bool inverted = false;         // Don't invert the signal.
+const bool use_modulation = false;    // Don't use modulation.
+IRArgoAC ac(kIrLed, inverted, use_modulation);  // Set GPIO, signal-inverting, modulation.
 
 void setup() {
   ac.begin();
