@@ -13,7 +13,14 @@
 #ifdef UNIT_TEST
 #include <cmath>
 #endif
+#ifdef SWIGLIB
+#include <vector>
+#endif  // SWIGLIB
 #include "IRtimer.h"
+
+#ifdef SWIGLIB
+std::vector<int> timingList;
+#endif  // SWIGLIB
 
 /// Constructor for an IRsend object.
 /// @param[in] IRsendPin Which GPIO pin to use when sending an IR command.
@@ -74,9 +81,9 @@ uint32_t IRsend::calcUSecPeriod(uint32_t hz, bool use_offset) {
       (1000000UL + hz / 2) / hz;  // The equiv of round(1000000/hz).
   // Apply the offset and ensure we don't result in a <= 0 value.
   if (use_offset)
-    return std::max((uint32_t)1, period + periodOffset);
+    return std::max(static_cast<uint32_t>(1), period + periodOffset);
   else
-    return std::max((uint32_t)1, period);
+    return std::max(static_cast<uint32_t>(1), period);
 }
 
 /// Set the output frequency modulation and duty cycle.
@@ -155,6 +162,11 @@ void IRsend::_delayMicroseconds(uint32_t usec) {
 /// Ref:
 ///   https://www.analysir.com/blog/2017/01/29/updated-esp8266-nodemcu-backdoor-upwm-hack-for-ir-signals/
 uint16_t IRsend::mark(uint16_t usec) {
+#ifdef SWIGLIB
+  // std::cout << usec << " ";
+  timingList.push_back(usec);
+  return 1;
+#else  // SWIGLIB
   // Handle the simple case of no required frequency modulation.
   if (!modulation || _dutycycle >= 100) {
     ledOn();
@@ -174,17 +186,20 @@ uint16_t IRsend::mark(uint16_t usec) {
     ledOn();
     // Calculate how long we should pulse on for.
     // e.g. Are we to close to the end of our requested mark time (usec)?
-    _delayMicroseconds(std::min((uint32_t)onTimePeriod, usec - elapsed));
+    _delayMicroseconds(std::min(static_cast<uint32_t>(onTimePeriod),
+                                usec - elapsed));
     ledOff();
     counter++;
     if (elapsed + onTimePeriod >= usec)
       return counter;  // LED is now off & we've passed our allotted time.
     // Wait for the lesser of the rest of the duty cycle, or the time remaining.
     _delayMicroseconds(
-        std::min(usec - elapsed - onTimePeriod, (uint32_t)offTimePeriod));
+        std::min(usec - elapsed - onTimePeriod,
+                 static_cast<uint32_t>(offTimePeriod)));
     elapsed = usecTimer.elapsed();  // Update & recache the actual elapsed time.
   }
   return counter;
+#endif  // SWIGLIB
 }
 
 /// Turn the pin (LED) off for a given time.
@@ -194,7 +209,12 @@ uint16_t IRsend::mark(uint16_t usec) {
 void IRsend::space(uint32_t time) {
   ledOff();
   if (time == 0) return;
+#ifdef SWIGLIB
+  // std::cout << time << " ";
+  timingList.push_back(time);
+#else  // SWIGLIB
   _delayMicroseconds(time);
+#endif  // SWIGLIB
 }
 
 /// Calculate & set any offsets to account for execution times during sending.
@@ -214,7 +234,7 @@ int8_t IRsend::calibrate(uint16_t hz) {
   uint32_t timeTaken = usecTimer.elapsed();  // Record the time it took.
   // While it shouldn't be necessary, assume at least 1 pulse, to avoid a
   // divide by 0 situation.
-  pulses = std::max(pulses, (uint16_t)1U);
+  pulses = std::max(pulses, static_cast<uint16_t>(1U));
   uint32_t calcPeriod = calcUSecPeriod(hz);  // e.g. @38kHz it should be 26us.
   // Assuming 38kHz for the example calculations:
   // In a 65535us pulse, we should have 2520.5769 pulses @ 26us periods.
@@ -719,6 +739,8 @@ uint16_t IRsend::defaultBits(const decode_type_t protocol) {
       return kDaikin64Bits;
     case ELECTRA_AC:
       return kElectraAcBits;
+    case EUROM:
+      return kEuromBits;
     case GREE:
       return kGreeBits;
     case HAIER_AC:
@@ -1243,6 +1265,11 @@ bool IRsend::send(const decode_type_t type, const uint8_t *state,
       sendElectraAC(state, nbytes);
       break;
 #endif  // SEND_ELECTRA_AC
+#if SEND_EUROM
+    case EUROM:
+      sendEurom(state, nbytes);
+      break;
+#endif  // SEND_EUROM
 #if SEND_FUJITSU_AC
     case FUJITSU_AC:
       sendFujitsuAC(state, nbytes);
